@@ -1,12 +1,12 @@
 /**
  * =====================================================
  * Debug ( )
- * 
+ *
  * PARAMETERS:
  *		none
  *
  * RETURNS:
- *		string) A list of informative values
+ *		(string) A list of informative values
  * 		about the current FMP environment.
  *
  * DEPENDENCIES:
@@ -15,10 +15,12 @@
  * NOTES:
  *
  * RELEASE:
- * 		101009 - Initial by Matt Petrowsky
+ *		2014-05-08 - Injecting LayoutID despite it not being an internal function.
+ *		2014-03-04 - Updated recursion and added more functions.
  * 		2013-01-25 - Updated to be recursive and use better output. Included more functions
+ * 		101009 - Initial by Matt Petrowsky
  * =====================================================
- * 
+ *
  */
 
 If ( Developer;
@@ -50,6 +52,7 @@ If ( Developer;
 			"	LastError";
 			"	LastODBCError";
 			"User";
+			"	UserCount";
 			"	AccountName";
 			"	AccountPrivilegeSetName";
 			"	CurrentPrivilegeSetName";
@@ -64,6 +67,21 @@ If ( Developer;
 			"	LayoutTableName";
 			"	ActiveLayoutObjectName";
 			"	ActivePortalRowNumber";
+			"Windows";
+			"	WindowName";
+			"	WindowMode";
+			"	WindowOrientation";
+			"	WindowStyle";
+			"	WindowZoomLevel";
+			"	WindowVisible";
+			"	WindowTop";
+			"	WindowLeft";
+			"	WindowHeight";
+			"	WindowWidth";
+			"	WindowContentHeight";
+			"	WindowContentWidth";
+			"	WindowDesktopHeight";
+			"	WindowDesktopWidth";
 			"Records";
 			"	RecordID";
 			"	RecordNumber";
@@ -93,17 +111,18 @@ If ( Developer;
 			"	PreferencesPath";
 			"	SystemDrive";
 		);
+		~padding = "                              "; // 30 chars is longest function name
 		~tab = "	";
 		~line = GetValue ( ~input ; $~debugCounter );
 		~eval = If ( Left ( ~line ; 1 ) = ~tab ; // evaluate lines prefixed with tabs
 			Let ( [
 				~function = Trim ( ~line );
-				~padding = "                              "; // 30 chars is longest function name
 				~result = Evaluate ( "Get(" & ~function & ")" )
 			];
+				// Output
 				~function
 				& Left ( ~padding ; Length ( ~padding ) - Length ( ~function ) ) // spacing out result
-				& If ( valuecount ( ~result ) > 1; // some functions return multiple lines
+				& If ( ValueCount ( ~result ) > 1; // some functions return multiple lines
 					Substitute ( ~result ; ¶ ; ¶ & ~tab & Left ( ~padding ; Length ( ~padding ) - 1 ) );
 					~result
 				)
@@ -111,13 +130,23 @@ If ( Developer;
 
 			~line
 		);
-		~lastValue = RightWords ( ~input ; 1 );
-		~itemCount = ValueCount ( ~input );
-		$~debugOutput = List ( $~debugOutput ; ~eval )
+		~exit = $~debugCounter = ValueCount ( ~input )
 	];
-		If ( $~debugCounter = ~itemCount;
-			// don't want the result to continously build and length will vary based on function results with multiple lines
-			Left ( $~debugOutput ; Position ( $~debugOutput ; ¶ ; Position ( $~debugOutput ; ~lastValue ; 1 ; 1 ) ; 1 ) - 1 ); // better way to do this?
-			Let ( $~debugCounter = $~debugCounter + 1 ; Debug ) )
+		Let ( [
+			$~debugCounter = If ( ~exit ; "" ; $~debugCounter + 1 );
+			$~debugOutput = List ( $~debugOutput ; ~eval )
+		];
+				If ( ~exit ;
+					Substitute (
+						$~debugOutput & Let ( $~debugOutput = "" ; "");
+					[ "Layout¶" ; "Layout¶"
+									& ~tab
+									& "LayoutID"
+									& Left ( ~padding ; Length ( ~padding ) - Length ( "LayoutID" ) - 1 )
+									&  GetValue ( LayoutIDs ( Get ( FileName ) ) ; Get ( LayoutNumber ) )
+									&¶ ]
+					) ;
+				Debug )
+		)
 	)
 )
